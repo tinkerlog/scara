@@ -109,7 +109,6 @@ void convertShape(PShape shape, Queue<Command> posQueue, String indent, float tr
         for (int i = 0; i < shape.getVertexCount(); i += 2) {            
             PVector v1 = shape.getVertex(i);
             PVector v2 = shape.getVertex(i+1);
-            String cmt = "";
             if (v2Old == null || !v1.equals(v2Old)) {
                 posQueue.offer(new Command(transX + v1.x, transY - v1.y, Cmd.MOVE));
                 posQueue.offer(new Command(transX + v2.x, transY - v2.y, Cmd.DRAW));
@@ -132,22 +131,22 @@ Queue<Command> preProcess(Queue posQueue) {
     Command c1 = null;
     Command c2 = null;
     for (Iterator it = posQueue.iterator(); it.hasNext(); ) {
-	c2 = (Command)it.next();
-	if (c1 == null) {
-	    newQueue.offer(c2);
-	}
-	else {
-	    if (c2.command == Cmd.MOVE) {
-		newQueue.offer(c2);
-	    }
-	    else {
-		float distance = PVector.dist(c1.pos, c2.pos);
-		if (distance > MAX_LINE_DISTANCE) {
-		    newQueue.addAll(generateSupportPoints(c1, c2));		    
-		}
-	    }
-	}
-	c1 = c2;
+        c2 = (Command)it.next();
+        if (c1 == null) {
+            newQueue.offer(c2);
+        }
+        else {
+            if (c2.command == Cmd.MOVE) {
+                newQueue.offer(c2);
+            }
+            else {
+                float distance = PVector.dist(c1.pos, c2.pos);
+                if (distance > MAX_LINE_DISTANCE) {
+                    newQueue.addAll(generateSupportPoints(c1, c2));		    
+                }
+            }
+        }
+	      c1 = c2;
     }
     return newQueue;
 }
@@ -165,10 +164,10 @@ List<Command> generateSupportPoints(Command c1, Command c2) {
     float y = c1.pos.y;
     int i = 0;
     while (i < dcr) {
-	x += ddx;
-	y += ddy;
-	points.add(new Command(x, y, c2.command));
-	i++;
+        x += ddx;
+        y += ddy;
+        points.add(new Command(x, y, c2.command));
+        i++;
     }        
     points.add(c2);
     return points;
@@ -180,28 +179,28 @@ void update() {
 
 void updateState() {
     if (idle) {
-	if (!posQueue.isEmpty()) {
-	    idle = false;
-	    currentCmd = posQueue.poll();
-	    targetPos = currentCmd.pos;
-	    computeInverseKinematics(targetPos);
-	}
+        if (!posQueue.isEmpty()) {
+            idle = false;
+            currentCmd = posQueue.poll();
+            targetPos = currentCmd.pos;
+            computeInverseKinematics(targetPos);
+        }
     }
     else {
-	updateMotors();
-	PVector oldHandPos = currentHandPos.copy();
-	computeForwardKinematics();
-	if (currentCmd.command == Cmd.DRAW) {
-	    float[] line = new float[4];
-	    line[0] = oldHandPos.x;
-	    line[1] = oldHandPos.y;
-	    line[2] = currentHandPos.x;
-	    line[3] = currentHandPos.y;
-	    canvasLines.add(line);
-	}
-	if (iterations <= 0 || targetPos.dist(currentHandPos) < 0.001) {
-	    idle = true;
-	}
+        updateMotors();
+        PVector oldHandPos = currentHandPos.copy();
+        computeForwardKinematics();
+        if (currentCmd.command == Cmd.DRAW) {
+            float[] line = new float[4];
+            line[0] = oldHandPos.x;
+            line[1] = oldHandPos.y;
+            line[2] = currentHandPos.x;
+            line[3] = currentHandPos.y;
+            canvasLines.add(line);
+        }
+        if (iterations <= 0 || targetPos.dist(currentHandPos) < 0.001) {
+            idle = true;
+        }
     }
 }
 
@@ -237,7 +236,7 @@ void computeInverseKinematics(PVector target) {
     // println("distance: " + d);
     
     if (d > MAX_REACH) {
-	throw new IllegalArgumentException("target not reachable");
+        throw new IllegalArgumentException("target not reachable");
     }
     
     float a = (ARM_A_LENGTH2 - ARM_B_LENGTH2 + sq(d)) / (2.0 * d);
@@ -269,15 +268,14 @@ void computeInverseKinematics(PVector target) {
     PVector targetElbow;
     
     if (d1 < d2) {
-	// println("choosing elbow 1");
-	targetElbow = elbow1;
+        // println("choosing elbow 1");
+        targetElbow = elbow1;
     }
     else {
-	// println("choosing elbow 2");
-	targetElbow = elbow2;
+        // println("choosing elbow 2");
+        targetElbow = elbow2;
     }
    
-    float tmpAcos = targetElbow.x / ARM_A_LENGTH;
     float targetTheta = acos(targetElbow.x / ARM_A_LENGTH);
     if (targetElbow.y < 0) targetTheta *= -1;
 
@@ -300,21 +298,21 @@ void computeInverseKinematics(PVector target) {
 
     iterations = 0;
     if (thetaTime > psiTime) {
-	iterations = (int)(thetaTime * FRAMERATE);
+        iterations = (int)(thetaTime * FRAMERATE);
     }
     else {
-	iterations = (int)(psiTime * FRAMERATE);
+        iterations = (int)(psiTime * FRAMERATE);
     }
     // println("iterations: " + iterations);
     float thetaSteps = degrees(deltaTheta) * STEPS_PER_DEGREE_A;
     float psiSteps = degrees(deltaPsi) * STEPS_PER_DEGREE_B;
     if (iterations > 0) {
-	iterStepsA = thetaSteps / iterations;
-	iterStepsB = psiSteps / iterations;
+        iterStepsA = thetaSteps / iterations;
+        iterStepsB = psiSteps / iterations;
     }
     else {
-	iterStepsA = 0f;
-	iterStepsB = 0f;	
+        iterStepsA = 0f;
+        iterStepsB = 0f;	
     }
 
     // println("steps: theta: " + thetaSteps + ", psi: " + psiSteps);
@@ -374,7 +372,7 @@ void drawLines() {
     stroke(lineColor);
     strokeWeight(4);
     for (float[] l : canvasLines) {
-	line(l[0], l[1], l[2], l[3]); 
+        line(l[0], l[1], l[2], l[3]); 
     }
 }
 
@@ -398,10 +396,10 @@ void drawOrigin() {
     strokeWeight(1.5);
     stroke(axisColor);
     for (int y = 1500; y >= -1500; y -= 500) {
-	line(-1000, y, 2500, y);
+        line(-1000, y, 2500, y);
     }
     for (int x = -500; x <= 2000; x += 500) {
-	line(x, -2000, x, 2000);
+        line(x, -2000, x, 2000);
     }    
 }
 
@@ -414,7 +412,7 @@ class Command {
     public PVector pos;
     public Cmd command;
     Command(float x, float y, Cmd command) {
-	this.pos = new PVector(x, y);
-	this.command = command;
+        this.pos = new PVector(x, y);
+        this.command = command;
     }
 }
