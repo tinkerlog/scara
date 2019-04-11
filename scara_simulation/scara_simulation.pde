@@ -36,6 +36,11 @@ float MAX_LINE_DISTANCE = 20.0; // lines with length more than 20mm gets broken 
 float ARM_A_LENGTH = 700.0;  // length upper arm (mm)
 float ARM_B_LENGTH = 700.0;  // length forearm (mm)
 
+float MIN_X =  150; // 850x950 
+float MAX_X = 1000;
+float MIN_Y =    0;
+float MAX_Y =  950;
+
 float MAX_REACH = ARM_A_LENGTH + ARM_B_LENGTH;
 float ARM_A_LENGTH2 = sq(ARM_A_LENGTH);
 float ARM_B_LENGTH2 = sq(ARM_B_LENGTH);
@@ -47,6 +52,13 @@ int FEEDRATE_A = 50;  // 15 degrees / sec.
 int FEEDRATE_B = 50;  // 15 degrees / sec.
 int stepsPerFrameA = (int)((FEEDRATE_A * STEPS_PER_DEGREE_A) * (1 / 40.0));
 int stepsPerFrameB = (int)((FEEDRATE_B * STEPS_PER_DEGREE_B) * (1 / 40.0));
+
+// "endstops" for theta and psi
+float THETA_MAX_RAD = radians( 100.0); 
+float THETA_MIN_RAD = radians(-100.0); 
+float PSI_MAX_RAD = radians( 170.0); 
+float PSI_MIN_RAD = radians(-170.0);
+
 
 float stepsA = 0;
 float stepsB = 0;
@@ -76,19 +88,29 @@ void setup() {
     
     // hf = new HersheyFont(this, "timesr.jhf");
     // hf = new HersheyFont(this, "cursive.jhf");
-    HersheyFont hf = new HersheyFont(this, "futural.jhf");
-    hf.textSize(220);
-    convertShape(hf.getShape("Hello"), posQueue, "", 480, 400);
-    convertShape(hf.getShape("World"), posQueue, "", 480, 150);
-    
+    // HersheyFont hf = new HersheyFont(this, "futural.jhf");
+    // hf.textSize(220);
+    // convertShape(hf.getShape("Hello"), posQueue, "", 480, 400);
+    // convertShape(hf.getShape("World"), posQueue, "", 480, 150);
+
+    /*
     posQueue.offer(new Command( 300,  600, Cmd.MOVE));
     posQueue.offer(new Command(1200,  600, Cmd.DRAW));
     posQueue.offer(new Command(1200,    0, Cmd.DRAW));
     posQueue.offer(new Command( 300,    0, Cmd.DRAW));
     posQueue.offer(new Command( 300,  600, Cmd.MOVE));
     posQueue.offer(new Command( 300,    0, Cmd.DRAW));
-    posQueue.offer(new Command( 500, -500, Cmd.MOVE));
+    posQueue.offer(new Command(-500,    0, Cmd.MOVE));
+    */
 
+    posQueue.offer(new Command( MIN_X, MAX_Y, Cmd.MOVE));
+    posQueue.offer(new Command( MAX_X, MAX_Y, Cmd.DRAW));
+    posQueue.offer(new Command( MAX_X, MIN_Y, Cmd.DRAW));
+    posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.DRAW));
+    posQueue.offer(new Command( MIN_X, MAX_Y, Cmd.MOVE));
+    posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.DRAW));
+    posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.MOVE));
+    
     posQueue = preProcess(posQueue);
     
     computeForwardKinematics();
@@ -146,7 +168,7 @@ Queue<Command> preProcess(Queue posQueue) {
                 }
             }
         }
-	      c1 = c2;
+        c1 = c2;
     }
     return newQueue;
 }
@@ -210,8 +232,25 @@ void updateMotors() {
     stepsB += iterStepsB;
     thetaRad = radians((float)stepsA / STEPS_PER_DEGREE_A);
     psiRad = radians((float)stepsB / STEPS_PER_DEGREE_B);
-    thetaRad = limitAngle(thetaRad);
-    psiRad = limitAngle(psiRad);	
+    
+    thetaRad = limitAnglePi(thetaRad);
+    if (thetaRad < THETA_MIN_RAD) {
+        throw new IllegalStateException("hitting the theta min stop: " + degrees(thetaRad));
+    }
+    else if (thetaRad > THETA_MAX_RAD) {
+        throw new IllegalStateException("hitting the theta max stop: " + degrees(thetaRad));
+    }
+
+    psiRad = limitAnglePi(psiRad);
+    float relPsiRad = psiRad - thetaRad;
+    // println("psi: " + degrees(psiRad) + ", relPsi: " + degrees(relPsiRad));
+    if (relPsiRad < PSI_MIN_RAD) {
+        throw new IllegalStateException("hitting the psi min stop: " + degrees(relPsiRad));
+    }
+    else if (relPsiRad > PSI_MAX_RAD) {
+        throw new IllegalStateException("hitting the psi max stop: " + degrees(relPsiRad));
+    }
+    
 }
 
 void computeForwardKinematics() {
@@ -266,27 +305,37 @@ void computeInverseKinematics(PVector target) {
     float d1 = PVector.dist(currentElbowPos, elbow1);
     float d2 = PVector.dist(currentElbowPos, elbow2);
     PVector targetElbow;
+    PVector altElbow;
     
     if (d1 < d2) {
-        // println("choosing elbow 1");
+        println("choosing elbow 1");
         targetElbow = elbow1;
+        altElbow = elbow2;
     }
     else {
-        // println("choosing elbow 2");
+        println("choosing elbow 2");
         targetElbow = elbow2;
+        altElbow = elbow1;
     }
    
     float targetTheta = acos(targetElbow.x / ARM_A_LENGTH);
     if (targetElbow.y < 0) targetTheta *= -1;
-
+    if (!canReachTargetTheta(targetTheta)) {
+        throw new IllegalArgumentException("theta: can not reach " + degrees(targetTheta));
+    }
+    
     PVector deltaTargetElbow = PVector.sub(target, targetElbow);
     float targetPsi = acos(deltaTargetElbow.x / ARM_B_LENGTH);
     if (deltaTargetElbow.y < 0) targetPsi *= -1;
+    if (!canReachTargetPsi(targetPsi, targetTheta)) {
+        throw new IllegalArgumentException("psi: can not reach " + degrees(targetPsi));
+    }
 
     float deltaTheta = limitAnglePi(targetTheta - thetaRad);
     float deltaPsi = limitAnglePi(targetPsi - psiRad);
-    // println("target theta: " + degrees(targetTheta) + ", psi: " + degrees(targetPsi));
-    // println("delta theta: " + degrees(deltaTheta) + ", psi: " + degrees(deltaPsi));
+    println("theta: " + degrees(thetaRad) + ", target: " + degrees(targetTheta) + ", delta: " + degrees(deltaTheta));
+    println("psi:  " + degrees(psiRad) + ", target: " + degrees(targetPsi) + ", delta: " + degrees(deltaPsi));
+    println("psi2: " + degrees(psiRad-thetaRad) + ", target: " + degrees(targetPsi-targetTheta));
 
     float deltaThetaDeg = degrees(deltaTheta);
     float deltaPsiDeg = degrees(deltaPsi);
@@ -319,8 +368,33 @@ void computeInverseKinematics(PVector target) {
     // println("iterSteps: A: " + iterStepsA + ", B: " + iterStepsB);    
 }
 
-float limitAngle(float angle) {
-    return (angle > TWO_PI) ? angle - TWO_PI : (angle < 0) ? angle + TWO_PI : angle;    
+/*
+boolean canReach(PVector elbow, PVector target) {
+    float targetTheta = acos(elbow.x / ARM_A_LENGTH);
+    if (elbow.y < 0) targetTheta *= -1;
+    if (!canReachTargetTheta(targetTheta)) {
+        println("canReach: theta: false");
+        return false;
+    }
+    PVector deltaTargetElbow = PVector.sub(target, elbow);
+    float targetPsi = acos(deltaTargetElbow.x / ARM_B_LENGTH);
+    if (deltaTargetElbow.y < 0) targetPsi *= -1;
+    if (!canReachTargetPsi(targetPsi, targetTheta)) {
+        println("canReach: psi: false");
+        return false;
+    }
+    println("canReach: true");
+    return true;
+}
+*/
+
+boolean canReachTargetTheta(float targetTheta) {
+    return (targetTheta < THETA_MAX_RAD) && (targetTheta > THETA_MIN_RAD);
+}
+
+boolean canReachTargetPsi(float targetPsi, float currentTheta) {
+    float relTargetPsi = targetPsi - currentTheta;
+    return (relTargetPsi < PSI_MAX_RAD) && (relTargetPsi > PSI_MIN_RAD);
 }
 
 float limitAnglePi(float angle) {
@@ -341,7 +415,7 @@ void draw() {
 
     popMatrix();
     drawStatus();
-
+    
     update();    
 }
 
