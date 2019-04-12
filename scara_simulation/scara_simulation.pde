@@ -18,7 +18,7 @@ int SIZE_Y = 800;
 int FRAMERATE = 60;
 
 int STATUS_WIDTH = 270;
-int STATUS_HEIGHT = 80;
+int STATUS_HEIGHT = 100;
 int STATUS_X = 40;
 int STATUS_Y = SIZE_Y - (STATUS_HEIGHT + 40);
 
@@ -84,15 +84,18 @@ Queue<Command> posQueue = new LinkedList<Command>();
 
 enum State {
     HOMING,
-    HOMING_A,
-    HOMING_B,
+    HOMING_A1,
+    HOMING_A2,
+    HOMING_B1,
+    HOMING_B2,
     IDLE,
-    WORKING
+    WORKING,
+    ERROR
 }
 
 State state = State.HOMING;
 
-boolean doHoming = false;
+boolean doHoming = true;
 
 void setup() { 
     size(800, 800);
@@ -100,7 +103,7 @@ void setup() {
 
     if (doHoming) {
         state = State.HOMING;
-        startStepsA = random(5000) - 2500;
+        startStepsA = random(5000) - 2500;  // fake a random arm position
         startStepsB = random(5000) - 2500;
     }
     else {
@@ -225,15 +228,61 @@ void update() {
     updateState();
 }
 
+int targetStepsB2 = 0;
+int targetStepsA2 = 0;
+
 void updateState() {
     switch (state) {
     case HOMING:
-        state = State.HOMING_B;
+        state = State.HOMING_A1;
         break;
-    case HOMING_B:
+    case HOMING_A1:  // moving upper arm and forearm until we hit the endstop
+        stepsA -= 5;
+        stepsB -= 5;
+        try {
+            updateMotors();
+            computeForwardKinematics();
+        }
+        catch (EndStopException ex) {
+            state = State.HOMING_A2;
+            targetStepsA2 = (int)(stepsA - (degrees(THETA_MIN_RAD) * STEPS_PER_DEGREE_A));
+            println("stepsA: " + stepsA + ", target: " + targetStepsA2);
+        }
+        break;
+    case HOMING_A2:  // moving upper arm to 0° 
+        if (stepsA < targetStepsA2) {
+            stepsA += 5;
+            stepsB += 5;
+            updateMotors();
+            computeForwardKinematics();
+        }
+        else {
+            stepsA = targetStepsA2;
+            state = State.HOMING_B1;
+        }
+        break;
+    case HOMING_B1:  // moving forearm until we hit the endstop
         stepsB += 5;
-        updateMotors();
-        computeForwardKinematics();
+        try {
+            updateMotors();
+            computeForwardKinematics();
+        }
+        catch (EndStopException ex) {
+            state = State.HOMING_B2;
+            targetStepsB2 = (int)(stepsB - (degrees(PSI_MAX_RAD) * STEPS_PER_DEGREE_B));
+            println("stepsB: " + stepsB + ", target: " + targetStepsB2);
+        }
+        break;
+    case HOMING_B2:  // moving the forearm to 0° 
+        if (stepsB > targetStepsB2) {
+            stepsB -= 5;
+            updateMotors();
+            computeForwardKinematics();
+        }
+        else {
+            stepsB = targetStepsB2;
+            state = State.IDLE;
+        }
         break;
     case IDLE:
         if (!posQueue.isEmpty()) {
@@ -241,6 +290,9 @@ void updateState() {
             targetPos = currentCmd.pos;
             computeInverseKinematics(targetPos);
             state = State.WORKING;
+        }
+        else {
+            state = State.IDLE;
         }
         break;
     case WORKING:
@@ -279,20 +331,20 @@ void updateMotors() {
 
 void checkThetaEndStop(float thetaRad) {
     if (thetaRad < THETA_MIN_RAD) {
-        throw new IllegalStateException("hitting the theta min stop: " + degrees(thetaRad));
+        throw new EndStopException("hitting the theta min stop: " + degrees(thetaRad));
     }
     else if (thetaRad > THETA_MAX_RAD) {
-        throw new IllegalStateException("hitting the theta max stop: " + degrees(thetaRad));
+        throw new EndStopException("hitting the theta max stop: " + degrees(thetaRad));
     }
 }
 
 void checkPsiEndStop(float psiRad, float thetaRad) {
     float relPsiRad = psiRad - thetaRad;
     if (relPsiRad < PSI_MIN_RAD) {
-        throw new IllegalStateException("hitting the psi min stop: " + degrees(relPsiRad));
+        throw new EndStopException("hitting the psi min stop: " + degrees(relPsiRad));
     }
     else if (relPsiRad > PSI_MAX_RAD) {
-        throw new IllegalStateException("hitting the psi max stop: " + degrees(relPsiRad));
+        throw new EndStopException("hitting the psi max stop: " + degrees(relPsiRad));
     }
 }
 
@@ -471,17 +523,39 @@ void drawStatus() {
 
     fill(systemColor);
     translate(STATUS_X + 10, STATUS_Y);
+
     translate(0, 20);
     textAlign(LEFT);
+    text("State: " + state, 0, 0);
+    
+    translate(0, 20);
     text("Steps A/B:\nTheta/Psi:\nX/Y:", 0, 0);
-
+    
     textAlign(RIGHT);
     translate(130, 0);
-    String s1 = String.format("%5.1f\n%4.2f\n%3.1f", stepsA, degrees(thetaRad), currentHandPos.x);
+    String s1 = null;
+    String s2 = null;
+    switch (state) {
+    case HOMING_A1:
+        s1 = String.format("%5.1f\n%4.2f\n%3.1f", stepsA, 0f, 0f);
+        s2 = String.format("%5.1f\n%4.2f\n%3.1f", stepsB, 0f, 0f);
+        break;
+    case HOMING_A2:
+    case HOMING_B1:
+        s1 = String.format("%5.1f\n%4.2f\n%3.1f", stepsA, degrees(thetaRad), 0f);
+        s2 = String.format("%5.1f\n%4.2f\n%3.1f", stepsB, 0f, 0f);
+        break;
+    case HOMING_B2:
+        s1 = String.format("%5.1f\n%4.2f\n%3.1f", stepsA, degrees(thetaRad), 0f);
+        s2 = String.format("%5.1f\n%4.2f\n%3.1f", stepsB, degrees(psiRad), 0f);
+        break;        
+    default:
+        s1 = String.format("%5.1f\n%4.2f\n%3.1f", stepsA, degrees(thetaRad), currentHandPos.x);            
+        s2 = String.format("%5.1f\n%4.2f\n%3.1f", stepsB, degrees(psiRad), currentHandPos.y);
+    }
     text(s1, 0, 0);
 
     translate(90, 0);
-    String s2 = String.format("%5.1f\n%4.2f\n%3.1f", stepsB, degrees(psiRad), currentHandPos.y);
     text(s2, 0, 0);
 }
 
@@ -531,5 +605,11 @@ class Command {
     Command(float x, float y, Cmd command) {
         this.pos = new PVector(x, y);
         this.command = command;
+    }
+}
+
+class EndStopException extends RuntimeException  {
+    EndStopException(String message) {
+        super(message);
     }
 }
