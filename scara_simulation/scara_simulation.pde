@@ -13,6 +13,7 @@
 
 import java.util.*;
 
+
 int SIZE_X = 800;
 int SIZE_Y = 800;
 int FRAMERATE = 60;
@@ -95,7 +96,7 @@ enum State {
 
 State state = State.HOMING;
 
-boolean doHoming = true;
+boolean doHoming = false;
 
 void setup() { 
     size(800, 800);
@@ -115,9 +116,10 @@ void setup() {
     // hf = new HersheyFont(this, "timesr.jhf");
     HersheyFont hf = new HersheyFont(this, "cursive.jhf");
     // HersheyFont hf = new HersheyFont(this, "futural.jhf");
-    hf.textSize(200);
-    convertShape(hf.getShape("Hello"), posQueue, "", 350, 400);
-    convertShape(hf.getShape("World"), posQueue, "", 350, 150);
+    hf.textSize(120);
+    convertShape(hf.getShape("Hello"), posQueue, "", 850, 400);
+    convertShape(hf.getShape("W"), posQueue, "",    850, 250);
+    convertShape(hf.getShape("orld"), posQueue, "", 930, 250);
 
     /*
     posQueue.offer(new Command( 300,  600, Cmd.MOVE));
@@ -129,6 +131,7 @@ void setup() {
     posQueue.offer(new Command(-500,    0, Cmd.MOVE));
     */
 
+    /*
     posQueue.offer(new Command( MIN_X, MAX_Y, Cmd.MOVE));
     posQueue.offer(new Command( MAX_X, MAX_Y, Cmd.DRAW));
     posQueue.offer(new Command( MAX_X, MIN_Y, Cmd.DRAW));
@@ -136,8 +139,12 @@ void setup() {
     posQueue.offer(new Command( MIN_X, MAX_Y, Cmd.MOVE));
     posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.DRAW));
     posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.MOVE));
+    */
+    posQueue.offer(new Command(  1400,  0, Cmd.MOVE));
+    // posQueue.offer(new Command(   500,  -250, Cmd.MOVE));
     
     posQueue = preProcess(posQueue);
+    exportToFile("hello.gcode", posQueue);
     
     computeForwardKinematics();
 }
@@ -172,6 +179,48 @@ void convertShape(PShape shape, Queue<Command> posQueue, String indent, float tr
         break;
     }
     
+}
+
+
+void exportToFile(String fileName, Queue<Command> posQueue) {
+
+    PrintWriter output = createWriter(fileName);
+
+    output.println("M280 P0 S60");
+
+    Command c1 = null;
+    Command c2 = null;
+    boolean isMove = true;
+    for (Iterator it = posQueue.iterator(); it.hasNext(); ) {
+        c2 = (Command)it.next();
+        if (c1 != null && c1.command != c2.command) {
+            if (c2.command == Cmd.DRAW) {
+                output.println("M400");
+                output.println("M280 P0 S130");
+                output.println("G4 P1000");
+                isMove = false;
+            }
+            else {
+                output.println("M400");
+                output.println("M280 P0 S60");
+                output.println("G4 P500");
+                isMove = true;
+            }
+        }
+        if (isMove) {
+            output.println(String.format(Locale.US, "G0 X%.1f Y%.1f", c2.pos.x, c2.pos.y));
+        }
+        else {
+            output.println(String.format(Locale.US, "G1 X%.1f Y%.1f", c2.pos.x, c2.pos.y));
+        }
+        
+        c1 = c2;
+    }
+
+    
+    output.flush();
+    output.close();
+
 }
 
 Queue<Command> preProcess(Queue posQueue) {
