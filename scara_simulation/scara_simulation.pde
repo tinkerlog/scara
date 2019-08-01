@@ -121,30 +121,12 @@ void setup() {
     convertShape(hf.getShape("W"), posQueue, "",    850, 250);
     convertShape(hf.getShape("orld"), posQueue, "", 930, 250);
 
-    /*
-    posQueue.offer(new Command( 300,  600, Cmd.MOVE));
-    posQueue.offer(new Command(1200,  600, Cmd.DRAW));
-    posQueue.offer(new Command(1200,    0, Cmd.DRAW));
-    posQueue.offer(new Command( 300,    0, Cmd.DRAW));
-    posQueue.offer(new Command( 300,  600, Cmd.MOVE));
-    posQueue.offer(new Command( 300,    0, Cmd.DRAW));
-    posQueue.offer(new Command(-500,    0, Cmd.MOVE));
-    */
-
-    /*
-    posQueue.offer(new Command( MIN_X, MAX_Y, Cmd.MOVE));
-    posQueue.offer(new Command( MAX_X, MAX_Y, Cmd.DRAW));
-    posQueue.offer(new Command( MAX_X, MIN_Y, Cmd.DRAW));
-    posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.DRAW));
-    posQueue.offer(new Command( MIN_X, MAX_Y, Cmd.MOVE));
-    posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.DRAW));
-    posQueue.offer(new Command( MIN_X, MIN_Y, Cmd.MOVE));
-    */
     posQueue.offer(new Command(  1400,  0, Cmd.MOVE));
     // posQueue.offer(new Command(   500,  -250, Cmd.MOVE));
     
     posQueue = preProcess(posQueue);
-    exportToFile("hello.gcode", posQueue);
+
+    // exportToFile("hello.gcode", posQueue);
     
     computeForwardKinematics();
 }
