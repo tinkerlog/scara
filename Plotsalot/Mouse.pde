@@ -22,11 +22,9 @@ void mouseWheel(MouseEvent event) {
         RPoint center = shape.getCenter();
         if (e > 0.0001) {
             scaleShape(shape, center, 1.02);
-            scaleShape(fillLines, center, 1.02);
         }
         else if (e < -0.001) {
             scaleShape(shape, center, 0.98);
-            scaleShape(fillLines, center, 0.98);
         }
     }
 }
@@ -37,8 +35,8 @@ void mouseDragged() {
         int deltaY = mouseY-pmouseY;
         if (deltaX != 0 || deltaY != 0) {
             shape.translate(deltaX / SCREEN_SCALE, deltaY / -SCREEN_SCALE);
-            if (fillLines != null) {
-                fillLines.translate(deltaX / SCREEN_SCALE, deltaY / -SCREEN_SCALE);
+            for (RShape lines : shapeLines.values()) {
+                lines.translate(deltaX / SCREEN_SCALE, deltaY / -SCREEN_SCALE);
             }
         }
     }

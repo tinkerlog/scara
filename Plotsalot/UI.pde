@@ -1,6 +1,7 @@
 
 
 ControlP5 gui;
+int shapeCount = 0;
 
 void setupUI() {
     gui = new ControlP5(this);
@@ -24,17 +25,69 @@ void setupUI() {
         .getCaptionLabel()
         .align(ControlP5.CENTER, ControlP5.CENTER);
 
-    gui.addToggle("tglFill")
-        .setCaptionLabel("Fill")
-        .setPosition(10, 110)
-        .setValue(false)
-        .setMode(ControlP5.SWITCH)
-        .setColorCaptionLabel(color(0));
-    gui.getController("tglFill")
-        .getCaptionLabel()
-        .align(ControlP5.LEFT, ControlP5.TOP_OUTSIDE);
-    
+    gui.addTextlabel("Shapes")
+        .setText("SHAPES")
+        .setPosition(10, 180)
+        .setFont(gui.getFont());
+
 }
+
+void addShapeButtons(final RShape shape) {
+    CheckBox cb = gui.addCheckBox("cb" + shapeCount)
+        .setPosition(10, 200 + shapeCount * 22)
+        .setSize(15, 15)
+        .setItemsPerRow(1)
+        .setSpacingColumn(35)
+        .addItem("on " + shapeCount, 1);
+    cb.getItem(0).setState(true);
+    gui.getController("on " + shapeCount).addListener(new ControlListener() {
+            public void controlEvent(ControlEvent event) {
+                shapeConfigs.get(shape).doDraw = event.getController().getValue() > 0;
+            }
+        });
+
+    DropdownList ddl = gui.addDropdownList("dd " + shapeCount)
+        .setPosition(55, 200 + shapeCount * 22)
+        .setItemHeight(20)
+        .setWidth(85)
+        .setBarHeight(15)        
+        .addItem("POLY", "poly")
+        .addItem("STROKE", "stroke")
+        .addItem("HATCH", "hatch")
+        .addItem("STROKE & HATCH", "strokeHatch");
+    ddl.getCaptionLabel().set("POLY");
+    ddl.close();
+    ddl.setValue(0f);
+
+    ddl.onEnter(new CallbackListener() {
+            public void controlEvent(CallbackEvent event) {
+                event.getController().bringToFront();
+            }
+        });
+    gui.getController("dd " + shapeCount).addListener(new ControlListener() {
+            public void controlEvent(ControlEvent event) {
+                int style = (int)event.getController().getValue();
+                println("dropdown: " + event.getController().getValue() + ", " + event.getController().getStringValue());
+                switch (style) {
+                case STYLE_POLY:
+                    setPolyStyle(shape, style);
+                    break;
+                case STYLE_STROKE:
+                    setStrokeStyle(shape, style);
+                    break;
+                case STYLE_HATCH:
+                    setHatchStyle(shape, style);
+                    break;
+                case STYLE_STROKE_HATCH:
+                    setStrokeHatchStyle(shape, style);
+                    break;
+                }
+            }            
+        });
+
+    shapeCount++;
+}
+
 
 void load() {  
     selectInput("Select an SVG file to open:", "fileSelected"); 
@@ -51,7 +104,9 @@ void fileSelected(File selection) {
 
         if (p[p.length-1].toLowerCase().equals("svg")) {
             filename = path;
+            noLoop();
             loadSvg(path);
+            loop();
         }
         else {
             println("Not an SVG: " + path);
@@ -63,6 +118,4 @@ void export() {
     exportFile();
 }
 
-void tglFill() {
-    toggleFillStroke();
-}
+
