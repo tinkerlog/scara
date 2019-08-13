@@ -192,7 +192,9 @@ void prepareShapes(RShape shape) {
 
 void printShape(RShape shape, String indent) {
     int shapeCount = 0;
-    println(indent + "name: " + shape.name + ", childs: " + shape.countChildren() + ", paths: " + shape.countPaths());
+    if (shape.countChildren() > 0) {
+        println(indent + "name: " + shape.name + ", childs: " + shape.countChildren() + ", paths: " + shape.countPaths());
+    }
     
     printStyle(shape.getStyle(), indent + "  ");
     for (int i = 0; i < shape.countChildren(); i++) {
@@ -207,7 +209,7 @@ void printShape(RShape shape, String indent) {
 
 void printStyle(RStyle stl, String indent) {
     int fill = stl.fillColor;
-    println(indent + "style: fill: " + stl.fill + ", color: " +  red(fill) + ", " + green(fill) + ", " + blue(fill));
+    // println(indent + "style: fill: " + stl.fill + ", color: " +  red(fill) + ", " + green(fill) + ", " + blue(fill));
 }
 
 void print(RShape p, String msg) {

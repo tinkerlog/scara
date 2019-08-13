@@ -69,7 +69,7 @@ void exportShape(RShape shape, PrintWriter out, String indent) {
                 }
             }
             RShape lines = shapeLines.get(shape);
-            println(indent + "fillLines: " + lines.countChildren());
+            // println(indent + "fillLines: " + lines.countChildren());
             if (lines != null) {
                 for (int i = 0; i < lines.countChildren(); i++) {
                     RShape lineChild = lines.children[i];
