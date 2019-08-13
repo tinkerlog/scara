@@ -2,7 +2,7 @@
 
 # Alps Panoramas
 
-![Screenshot](alps_panoramas/apls_screenshot.png)
+![Screenshot](alps_panoramas/alps_screenshot.png)
 
 Processing sketch to draw alps panoramas (3^3 = 27 panorams).
 Drawing is saved as SVG.
