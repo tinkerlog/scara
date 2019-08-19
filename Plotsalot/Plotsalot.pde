@@ -15,10 +15,10 @@ int VP_MAX_Y = 1450;
 int ARM_REACH = 1427;
 
 // position of a sheet of paper
-int PAPER_X = 500;
-int PAPER_Y =   0;
-int PAPER_WIDTH =  700;
-int PAPER_HEIGHT = 600;
+int PAPER_X = 200;
+int PAPER_Y =  50;
+int PAPER_WIDTH =  800;
+int PAPER_HEIGHT = 900;
 
 // screen
 int SCREEN_MAX_X = 800;
