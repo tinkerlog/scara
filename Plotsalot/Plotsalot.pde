@@ -38,6 +38,7 @@ color background = 0xFFB0B0B0;
 color activeColor = 0xFFFF0000;
 
 RShape shape = null;
+
 String filename;
 float shapeScale = 1F;
 boolean doFill = true;
@@ -108,10 +109,12 @@ void draw() {
     scale(SCREEN_SCALE, -SCREEN_SCALE);
     drawPaper();
     drawGrid();
+    // if (pshape != null) {
+    //     shape(pshape, 100, 100);
+    // }
   
     if (shape != null) {
         drawShape(shape);
-        // shape.draw();
         if (mouseIsOverShape) {
             stroke(activeColor);
             rect(shape.getX(), shape.getY(), shape.getWidth(), shape.getHeight());
@@ -159,7 +162,9 @@ void drawPaper() {
 }
 
 RShape loadSvg(String filename) {
-    RShape shape = RG.loadShape(filename);
+    // RShape shape = RG.loadShape(filename);    
+    PShape pShape = loadShape(filename);
+    shape = convertToRShape(pShape);
     println("shape width/height: " + shape.width + ", " + shape.height);
     print(shape, "shape: ");
     prepareSvg(shape);
@@ -167,6 +172,74 @@ RShape loadSvg(String filename) {
     this.shape = shape;
     return shape;
 }
+
+RShape convertToRShape(PShape shape) {
+    RShape r = new RShape();
+    convert(shape, r, "");
+    return r;
+}
+
+RShape convert(PShape source, RShape target, String indent) {
+    println(indent + "shape: " + source.getName() + ", childs: " + source.getChildCount() + ", vertex: " + source.getVertexCount() + ", " + source.getVertexCodeCount());
+    println(indent + "  " + "fill: " + getPShapeFillColor(source));
+    // println(indent + "  " + "matrix: " + getPShapeMatrix(source));
+
+    target.setFill(getPShapeFillColor(source));
+    for (int i = 0; i < source.getChildCount(); i++) {
+        RShape r = new RShape();
+        convert(source.getChild(i), r, indent + "  ");
+        target.addChild(r);
+    }
+    if (source.getVertexCount() > 0) {
+        int i = 0;
+        int p = 0;
+        boolean isLine = false;
+        while (i < source.getVertexCodeCount()) {
+            switch (source.getVertexCode(i)) {
+            case VERTEX:
+                PVector pv = source.getVertex(p++);
+                // println(indent + "  " + i + " VERTEX " + pv);
+                if (isLine) {
+                    target.addLineTo(pv.x, pv.y);
+                }
+                else {
+                    target.addMoveTo(pv.x, pv.y);
+                    isLine = true;
+                }
+                break;
+            case BEZIER_VERTEX:
+                PVector pv1 = source.getVertex(p++);
+                PVector pv2 = source.getVertex(p++);
+                PVector pv3 = source.getVertex(p++);
+                target.addBezierTo(pv1.x, pv1.y, pv2.x, pv2.y, pv3.x, pv3.y);
+                // println(indent + "  " + i + " BEZIER_VERTEX " + pv1 + ", " + pv2 + ", " + pv3);
+                break;
+            case CURVE_VERTEX:
+                println(indent + "  " + i + " CURVE_VERTEX ignored!");
+                break;
+            case BREAK:
+                // println(indent + "  " + i + " BREAK");
+                target.addClose();
+                isLine = false;
+                break;
+            }
+            i++;
+        }
+        if (isLine) {
+            target.addClose();
+        }
+    }
+
+    PMatrix pm = getPShapeMatrix(source);
+    if (pm != null) {
+        float[] vals = pm.get(null);
+        RMatrix rm = new RMatrix(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]);
+        target.transform(rm);
+    }
+
+    return target;
+}
+
 
 void prepareSvg(RShape shape) {
     RPoint p1 = shape.getTopLeft();
@@ -186,7 +259,7 @@ void prepareShapes(RShape shape) {
     if (shape.countChildren() == 0 && shape.countPaths() > 0) {
         shapes.add(shape);
         addShapeButtons(shape);
-        shapeConfigs.put(shape, new ShapeConfig(true, 0));        
+        shapeConfigs.put(shape, new ShapeConfig(true, 0));
     }
 }
 
@@ -318,6 +391,38 @@ class ShapeConfig {
     }
 }
 
+
+//--- ugly and hacky -----------------------------------------------------
+
+// PShape has no getter for fill color or transformation matrix
+
+static final color getPShapeFillColor(final PShape sh) {
+  try {
+    final java.lang.reflect.Field f = 
+      PShape.class.getDeclaredField("fillColor");
+ 
+    f.setAccessible(true);
+    return f.getInt(sh);
+  }
+ 
+  catch (ReflectiveOperationException cause) {
+    throw new RuntimeException(cause);
+  }
+}
+
+static final PMatrix getPShapeMatrix(final PShape sh) {
+  try {
+    final java.lang.reflect.Field f = 
+      PShape.class.getDeclaredField("matrix");
+ 
+    f.setAccessible(true);
+    return (PMatrix)f.get(sh);
+  }
+ 
+  catch (ReflectiveOperationException cause) {
+    throw new RuntimeException(cause);
+  }
+}
 
 
 
