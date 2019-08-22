@@ -2,7 +2,7 @@
 
 # Mechpen
 
-![Screenshot](mechpen/mechpen_screenshot.png)
+![Screenshot](Mechpen/mechpen_screenshot.png)
 
 Processing sketch to load SVG files, scale and move them and export
 them to gcode.
