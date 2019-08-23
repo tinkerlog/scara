@@ -9,6 +9,10 @@ them to gcode.
 Also hatching of separate paths is possible.
 
 
+# Simulation
+
+![Screenshot](scara_simulation/scara_simulation_screenshot.png)
+
 # Alps Panoramas
 
 ![Screenshot](alps_panoramas/alps_screenshot.png)
