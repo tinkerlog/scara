@@ -1,4 +1,7 @@
-# scara
+# Mechpen
+
+Mechpen is a drawbot. More info here:
+https://tinkerlog.com/2019/08/27/mechpen/
 
 # Mechpen
 
@@ -12,6 +15,9 @@ Also hatching of separate paths is possible.
 # Simulation
 
 ![Screenshot](scara_simulation/scara_simulation_screenshot.png)
+
+This is a simulation of a SCARA robot arm. Main purpose is to see how
+the math works (forward and inverse kinematics).
 
 # Alps Panoramas
 
